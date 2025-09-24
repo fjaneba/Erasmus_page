@@ -125,27 +125,53 @@
       showMessage('Ověřuji…');
       
       try {
-        // Komunikace s vaším Apps Script
-        const response = await fetch('https://script.google.com/macros/s/AKfycbxQ2or0mdhAACixk6DSevhDcCNI6B1VdTyLMWdjc1bFsIWO1xVfFdKzci9EdsNGmKbq/exec?code=' + encodeURIComponent(code), {
+        // Komunikace s vaším Apps Script - opravená verze
+        const url = 'https://script.google.com/macros/s/AKfycbxQ2or0mdhAACixk6DSevhDcCNI6B1VdTyLMWdjc1bFsIWO1xVfFdKzci9EdsNGmKbq/exec?code=' + encodeURIComponent(code);
+        
+        const response = await fetch(url, {
           method: 'GET',
-          mode: 'cors'
+          redirect: 'follow',
+          headers: {
+            'Accept': 'application/json'
+          }
         });
         
-        const result = await response.json();
+        // Kontrola HTTP status kódu
+        if (!response.ok) {
+          throw new Error('HTTP ' + response.status);
+        }
+        
+        const text = await response.text();
+        let result;
+        
+        try {
+          result = JSON.parse(text);
+        } catch (parseError) {
+          showMessage('Server vrátil neplatná data', true);
+          console.error('Response text:', text);
+          console.error('Parse error:', parseError);
+          btn.disabled = false;
+          return;
+        }
         
         btn.disabled = false;
         
         if (result && result.ok && result.url) {
           showMessage('Přesměrovávám...');
-          window.open(result.url, '_top');
+          setTimeout(() => {
+            window.open(result.url, '_top');
+          }, 500);
         } else {
           showMessage('Kód není správný.', true);
         }
         
       } catch (error) {
         btn.disabled = false;
-        showMessage('Chyba připojení.', true);
-        console.error('Error:', error);
+        showMessage('Chyba připojení: ' + error.message, true);
+        console.error('Fetch error:', error);
+        
+        // Debug informace do konzole
+        console.log('Tried URL:', 'https://script.google.com/macros/s/AKfycbxQ2or0mdhAACixk6DSevhDcCNI6B1VdTyLMWdjc1bFsIWO1xVfFdKzci9EdsNGmKbq/exec?code=' + encodeURIComponent(code));
       }
     }
      
